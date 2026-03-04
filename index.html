@@ -6,35 +6,53 @@
 </head>
 <body>
 
-<h1>🎲 Campaign Chronicle Pro</h1>
+  <h1>🎲 Campaign Chronicle Pro</h1>
 
-<!-- AUTH SECTION -->
-<div id="authSection">
-  <h2>Login or Register</h2>
-  <input id="email" placeholder="Email">
-  <input id="password" type="password" placeholder="Password">
-  <br><br>
-  <button onclick="login()">Login</button>
-  <button onclick="register()">Register</button>
-</div>
+  <!-- AUTH SECTION -->
+  <div id="authSection">
+    <h2>Login / Register</h2>
+    <input id="email" placeholder="Email">
+    <input id="password" type="password" placeholder="Password">
+    <button onclick="register()">Register</button>
+    <button onclick="login()">Login</button>
+  </div>
 
-<!-- MAIN APP -->
-<div id="appSection" class="hidden">
+  <!-- APP SECTION -->
+  <div id="appSection" class="hidden">
+    <button onclick="logout()">Logout</button>
+    <button onclick="createCampaign()">➕ Create Campaign</button>
 
-  <button onclick="logout()">Logout</button>
-  <button onclick="createCampaign()">➕ Create Campaign</button>
+    <h2>Your Campaigns</h2>
+    <div id="campaignList"></div>
 
-  <h2>Your Campaigns</h2>
-  <div id="campaignList"></div>
+    <hr>
 
-  <hr>
+    <div id="campaignArea" class="hidden">
+      <h2 id="campaignTitle"></h2>
 
-  <h2>Notes</h2>
-  <div id="notes"></div>
+      <h3>Notes</h3>
+      <input id="noteTitle" placeholder="Session Title">
+      <textarea id="noteText" placeholder="Write notes..."></textarea>
+      <button onclick="saveNote()">Save Note</button>
 
-</div>
+      <div id="notes"></div>
 
-<script type="module" src="script.js"></script>
+      <hr>
 
+      <h3>Backstory Helper</h3>
+      <button onclick="generateBackstoryPrompt()">🎲 Inspire Me</button>
+      <div id="backstoryPrompt"></div>
+
+      <hr>
+
+      <h3>File Summarizer</h3>
+      <input type="file" id="fileInput">
+      <button onclick="summarizeFile()">Summarize</button>
+      <div id="summaryOutput"></div>
+
+    </div>
+  </div>
+
+  <script type="module" src="script.js"></script>
 </body>
 </html>

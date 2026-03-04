@@ -14,11 +14,10 @@ import {
   collection,
   addDoc,
   doc,
-  setDoc,
-  getDocs,
-  updateDoc,
   deleteDoc,
-  onSnapshot
+  onSnapshot,
+  query,
+  where
 } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
 // ===== Firebase Config =====
@@ -83,20 +82,23 @@ window.createCampaign = async function () {
 };
 
 function loadCampaigns() {
-  onSnapshot(collection(db, "campaigns"), snapshot => {
+  const q = query(
+    collection(db, "campaigns"),
+    where("ownerId", "==", currentUser.uid)
+  );
+
+  onSnapshot(q, snapshot => {
     const list = document.getElementById("campaignList");
     list.innerHTML = "";
 
     snapshot.forEach(docSnap => {
       const data = docSnap.data();
 
-      if (data.ownerId === currentUser.uid || data.members.includes(currentUser.uid)) {
-        list.innerHTML += `
-          <strong>${data.name}</strong>
-          <button onclick="openCampaign('${docSnap.id}')">Open</button>
-          <hr>
-        `;
-      }
+      list.innerHTML += `
+        <strong>${data.name}</strong>
+        <button onclick="openCampaign('${docSnap.id}')">Open</button>
+        <hr>
+      `;
     });
   });
 }
@@ -147,4 +149,5 @@ window.saveNote = async function () {
 window.deleteNote = async function (noteId) {
   await deleteDoc(doc(db, "campaigns", currentCampaignId, "notes", noteId));
 };
+
 

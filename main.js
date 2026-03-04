@@ -3,7 +3,8 @@ import { setupAuth } from "./auth.js";
 import {
   setUser,
   createCampaign,
-  loadCampaigns
+  loadCampaigns,
+  openEditor
 } from "./campaign.js";
 
 import {
@@ -19,13 +20,7 @@ import {
   trackTyping
 } from "./presence.js";
 
-import {
-  openEditor
-} from "./campaign.js";
-
-import {
-  loadSettings
-} from "./settings.js";
+import { loadSettings } from "./settings.js";
 
 /* =========================
    DOM REFERENCES
@@ -34,7 +29,6 @@ import {
 const authSection = document.getElementById("authSection");
 const appLayout = document.getElementById("appLayout");
 
-const campaignTitle = document.getElementById("campaignTitle");
 const textarea = document.getElementById("noteText");
 
 const fireBtn = document.getElementById("fireBtn");
@@ -54,8 +48,6 @@ let currentCampaign = null;
 
 setupAuth(
 
-  /* LOGIN */
-
   (user) => {
 
     currentUser = user;
@@ -66,14 +58,10 @@ setupAuth(
     setUser(user);
 
     loadCampaigns((campaigns) => {
-
       renderCampaignList(campaigns, openCampaign);
-
     });
 
   },
-
-  /* LOGOUT */
 
   () => {
 
@@ -105,11 +93,11 @@ function openCampaign(campaign) {
 
   showCampaign(campaign.name);
 
-  /* setup collaborative editor */
+  /* collaborative editor */
 
   openEditor(currentCampaign, textarea);
 
-  /* setup presence */
+  /* presence system */
 
   setupPresence(currentUser, currentCampaign);
 

@@ -1,19 +1,32 @@
 import { db } from "./firebase.js";
+
 import {
   collection,
   addDoc,
   query,
   where,
-  onSnapshot
+  onSnapshot,
+  doc,
+  setDoc
 } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
 let currentUser = null;
+let currentCampaign = null;
+
+/* =========================
+   USER
+========================= */
 
 export function setUser(user) {
   currentUser = user;
 }
 
+/* =========================
+   CREATE CAMPAIGN
+========================= */
+
 export function createCampaign() {
+
   const name = prompt("Campaign name?");
   if (!name) return;
 
@@ -22,29 +35,40 @@ export function createCampaign() {
     ownerId: currentUser.uid,
     createdAt: new Date()
   });
+
 }
 
+/* =========================
+   LOAD CAMPAIGNS
+========================= */
+
 export function loadCampaigns(render) {
+
   const q = query(
     collection(db, "campaigns"),
     where("ownerId", "==", currentUser.uid)
   );
 
   onSnapshot(q, snapshot => {
+
     const campaigns = [];
-    snapshot.forEach(doc => campaigns.push({ id: doc.id, ...doc.data() }));
+
+    snapshot.forEach(docSnap => {
+      campaigns.push({
+        id: docSnap.id,
+        ...docSnap.data()
+      });
+    });
+
     render(campaigns);
+
   });
+
 }
-import {
-  doc,
-  setDoc,
-  onSnapshot
-} from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
-import { db } from "./firebase.js";
-
-let currentCampaign = null;
+/* =========================
+   LIVE COLLAB EDITOR
+========================= */
 
 export function openEditor(campaignId, textarea) {
 

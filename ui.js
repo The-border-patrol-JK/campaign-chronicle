@@ -1,81 +1,87 @@
+/* =========================
+   CAMPAIGN LIST UI
+========================= */
+
 export function renderCampaignList(campaigns, openCampaign) {
+
   const list = document.getElementById("campaignList");
+
+  if (!list) return;
+
   list.innerHTML = "";
 
   campaigns.forEach(c => {
+
     const div = document.createElement("div");
 
     div.innerHTML = `
       <strong>${c.name}</strong>
-      <button data-id="${c.id}">Open</button>
+      <button class="btn">Open</button>
+      <hr>
     `;
 
     div.querySelector("button").onclick = () => openCampaign(c);
 
     list.appendChild(div);
+
   });
+
 }
+
+
+/* =========================
+   SHOW CAMPAIGN
+========================= */
 
 export function showCampaign(name) {
-  document.getElementById("campaignTitle").innerText = name;
+
+  const title = document.getElementById("campaignTitle");
+
+  if (title) {
+    title.textContent = name;
+  }
+
 }
+
+
+/* =========================
+   TYPING INDICATOR
+========================= */
 
 export function updateTypingIndicator(users) {
-  const el = document.getElementById("typingIndicator");
 
-  if (!users.length) {
-    el.innerText = "";
-    return;
-  }
-import { setupAuth } from "./auth.js";
-import { setUser, createCampaign, loadCampaigns } from "./campaign.js";
-import { renderCampaignList, showCampaign, updateTypingIndicator, fireIdea } from "./ui.js";
-import { setupPresence, watchPresence, trackTyping } from "./presence.js";
+  const indicator = document.getElementById("typingIndicator");
 
-const authSection = document.getElementById("authSection");
-const appLayout = document.getElementById("appLayout");
+  if (!indicator) return;
 
-let currentUser = null;
-let currentCampaign = null;
+  indicator.innerHTML = users
+    .filter(u => u.typing)
+    .map(u => `${u.email} typing...`)
+    .join("<br>");
 
-setupAuth(
-  (user) => {
-    currentUser = user;
-
-    authSection.classList.add("hidden");
-    appLayout.classList.remove("hidden");
-
-    setUser(user);
-
-    loadCampaigns(campaigns => {
-      renderCampaignList(campaigns, openCampaign);
-    });
-  },
-  () => {
-    authSection.classList.remove("hidden");
-    appLayout.classList.add("hidden");
-  }
-);
-
-document.getElementById("newCampaignBtn").onclick = createCampaign;
-
-function openCampaign(campaign) {
-  currentCampaign = campaign.id;
-
-  showCampaign(campaign.name);
-
-  setupPresence(currentUser, campaign.id);
-
-  watchPresence(users => {
-    updateTypingIndicator(users);
-  });
-
-  trackTyping(document.getElementById("noteText"));
 }
 
-document.getElementById("fireBtn").onclick = () => {
-  const text = document.getElementById("noteText").value;
-  const output = document.getElementById("typingIndicator");
 
-  fireIdea(text, output);
-};
+/* =========================
+   FIRE IDEA BUTTON
+========================= */
+
+export function fireIdea(text, indicator) {
+
+  const ideas = [
+
+    "A mysterious NPC interrupts the party.",
+    "A hidden trap activates.",
+    "A rival adventuring group appears.",
+    "The dungeon begins collapsing.",
+    "A cursed artifact activates.",
+    "An ally betrays the party.",
+    "A monster breaks through the wall."
+
+  ];
+
+  const idea = ideas[Math.floor(Math.random() * ideas.length)];
+
+  indicator.innerText = "🔥 " + idea;
+
+}

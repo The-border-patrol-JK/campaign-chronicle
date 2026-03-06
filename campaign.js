@@ -7,55 +7,49 @@ import {
   where,
   onSnapshot,
   doc,
-  setDoc
+  setDoc,
+  updateDoc,
+  arrayUnion
 } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
 let currentUser = null;
-let currentCampaign = null;
 
-/* =========================
-   USER
-========================= */
-
-export function setUser(user) {
+export function setUser(user){
   currentUser = user;
 }
 
-/* =========================
-   CREATE CAMPAIGN
-========================= */
+/* CREATE CAMPAIGN */
 
-export function createCampaign() {
+export async function createCampaign(){
 
   const name = prompt("Campaign name?");
-  if (!name) return;
+  if(!name) return;
 
-  addDoc(collection(db, "campaigns"), {
+  await addDoc(collection(db,"campaigns"),{
     name,
     ownerId: currentUser.uid,
+    members:[currentUser.uid],
     createdAt: new Date()
   });
 
 }
 
-/* =========================
-   LOAD CAMPAIGNS
-========================= */
+/* LOAD CAMPAIGNS */
 
-export function loadCampaigns(render) {
+export function loadCampaigns(render){
 
   const q = query(
-    collection(db, "campaigns"),
-    where("ownerId", "==", currentUser.uid)
+    collection(db,"campaigns"),
+    where("members","array-contains",currentUser.uid)
   );
 
-  onSnapshot(q, snapshot => {
+  onSnapshot(q,snap=>{
 
-    const campaigns = [];
+    const campaigns=[];
 
-    snapshot.forEach(docSnap => {
+    snap.forEach(docSnap=>{
       campaigns.push({
-        id: docSnap.id,
+        id:docSnap.id,
         ...docSnap.data()
       });
     });
@@ -66,37 +60,41 @@ export function loadCampaigns(render) {
 
 }
 
-/* =========================
-   LIVE COLLAB EDITOR
-========================= */
+/* JOIN CAMPAIGN FROM LINK */
 
-export function openEditor(campaignId, textarea) {
+export async function joinCampaign(campaignId,userId){
 
-  currentCampaign = campaignId;
+  const ref = doc(db,"campaigns",campaignId);
 
-  const noteRef = doc(db, "campaigns", campaignId, "editor", "live");
+  await updateDoc(ref,{
+    members: arrayUnion(userId)
+  });
 
-  /* listen for updates */
+}
 
-  onSnapshot(noteRef, snap => {
+/* LIVE EDITOR */
 
-    if (!snap.exists()) return;
+export function openEditor(campaignId,textarea){
+
+  const noteRef = doc(db,"campaigns",campaignId,"editor","live");
+
+  onSnapshot(noteRef,snap=>{
+
+    if(!snap.exists()) return;
 
     const data = snap.data();
 
-    if (textarea.value !== data.text) {
+    if(textarea.value !== data.text){
       textarea.value = data.text;
     }
 
   });
 
-  /* live typing save */
+  textarea.addEventListener("input",async()=>{
 
-  textarea.addEventListener("input", async () => {
-
-    await setDoc(noteRef, {
-      text: textarea.value,
-      updated: new Date()
+    await setDoc(noteRef,{
+      text:textarea.value,
+      updated:new Date()
     });
 
   });

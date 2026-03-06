@@ -4,13 +4,14 @@ import {
   setUser,
   createCampaign,
   loadCampaigns,
-  openEditor
+  openEditor,
+  joinCampaign
 } from "./campaign.js";
 
 import {
   renderCampaignList,
   showCampaign,
-  updateTypingIndicator,
+  generateCharacterIdea,
   fireIdea
 } from "./ui.js";
 
@@ -22,6 +23,10 @@ import {
 
 import { loadSettings } from "./settings.js";
 
+import { db } from "./firebase.js";
+import { doc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+
+
 /* =========================
    DOM REFERENCES
 ========================= */
@@ -29,11 +34,20 @@ import { loadSettings } from "./settings.js";
 const authSection = document.getElementById("authSection");
 const appLayout = document.getElementById("appLayout");
 
+const campaignTitle = document.getElementById("campaignTitle");
+const campaignList = document.getElementById("campaignList");
+
 const textarea = document.getElementById("noteText");
 
 const fireBtn = document.getElementById("fireBtn");
 const newCampaignBtn = document.getElementById("newCampaignBtn");
 const settingsBtn = document.getElementById("settingsBtn");
+const inviteBtn = document.getElementById("inviteBtn");
+const charBtn = document.getElementById("characterBtn");
+
+const mapUpload = document.getElementById("mapUpload");
+const mapPreview = document.getElementById("mapPreview");
+
 
 /* =========================
    STATE
@@ -42,11 +56,14 @@ const settingsBtn = document.getElementById("settingsBtn");
 let currentUser = null;
 let currentCampaign = null;
 
+
 /* =========================
    AUTH SYSTEM
 ========================= */
 
 setupAuth(
+
+  /* LOGIN */
 
   (user) => {
 
@@ -57,11 +74,17 @@ setupAuth(
 
     setUser(user);
 
+    checkInvite(user);
+
     loadCampaigns((campaigns) => {
+
       renderCampaignList(campaigns, openCampaign);
+
     });
 
   },
+
+  /* LOGOUT */
 
   () => {
 
@@ -75,19 +98,23 @@ setupAuth(
 
 );
 
+
 /* =========================
    CREATE CAMPAIGN
 ========================= */
 
 newCampaignBtn.onclick = () => {
+
   createCampaign();
+
 };
+
 
 /* =========================
    OPEN CAMPAIGN
 ========================= */
 
-function openCampaign(campaign) {
+function openCampaign(campaign){
 
   currentCampaign = campaign.id;
 
@@ -102,26 +129,78 @@ function openCampaign(campaign) {
   setupPresence(currentUser, currentCampaign);
 
   watchPresence((users) => {
-    updateTypingIndicator(users);
+
+    const indicator = document.getElementById("typingIndicator");
+
+    indicator.innerText = users.join(", ") + " online";
+
   });
 
   trackTyping(textarea);
 
 }
 
+
 /* =========================
-   FIRE IDEA BUTTON
+   INVITE SYSTEM
+========================= */
+
+inviteBtn.onclick = () => {
+
+  if(!currentCampaign) return;
+
+  const link =
+    `${window.location.origin}${window.location.pathname}?join=${currentCampaign}`;
+
+  navigator.clipboard.writeText(link);
+
+  alert("Invite link copied!");
+
+};
+
+
+/* =========================
+   AUTO JOIN FROM LINK
+========================= */
+
+function checkInvite(user){
+
+  const params = new URLSearchParams(window.location.search);
+
+  const campaignId = params.get("join");
+
+  if(!campaignId) return;
+
+  joinCampaign(campaignId,user.uid);
+
+}
+
+
+/* =========================
+   CHARACTER IDEA BUTTON
+========================= */
+
+charBtn.onclick = () => {
+
+  const idea = generateCharacterIdea();
+
+  document.getElementById("characterIdea").innerText = idea;
+
+};
+
+
+/* =========================
+   STORY IDEA BUTTON
 ========================= */
 
 fireBtn.onclick = () => {
 
-  const text = textarea.value;
-
   const indicator = document.getElementById("typingIndicator");
 
-  fireIdea(text, indicator);
+  fireIdea(textarea.value,indicator);
 
 };
+
 
 /* =========================
    SETTINGS PANEL
@@ -129,14 +208,41 @@ fireBtn.onclick = () => {
 
 settingsBtn.onclick = () => {
 
-  if (!currentCampaign) {
+  if(!currentCampaign){
+
     alert("Open a campaign first.");
+
     return;
+
   }
 
   loadSettings(currentCampaign);
 
 };
+
+
+/* =========================
+   MAP UPLOAD PREVIEW
+========================= */
+
+mapUpload.onchange = (e)=>{
+
+  const file = e.target.files[0];
+
+  if(!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = ()=>{
+
+    mapPreview.src = reader.result;
+
+  };
+
+  reader.readAsDataURL(file);
+
+};
+
 
 /* =========================
    AUTOSAVE SYSTEM
@@ -144,23 +250,24 @@ settingsBtn.onclick = () => {
 
 let autosaveTimer;
 
-textarea.addEventListener("input", () => {
+textarea.addEventListener("input",()=>{
 
   clearTimeout(autosaveTimer);
 
-  autosaveTimer = setTimeout(() => {
+  autosaveTimer = setTimeout(()=>{
 
     textarea.dispatchEvent(new Event("saveEditor"));
 
-  }, 2000);
+  },2000);
 
 });
+
 
 /* =========================
    AUTOSAVE EVENT
 ========================= */
 
-textarea.addEventListener("saveEditor", () => {
+textarea.addEventListener("saveEditor",()=>{
 
   console.log("Autosaved session text");
 

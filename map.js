@@ -5,13 +5,14 @@ const board=document.getElementById("mapBoard");
 const img=document.createElement("img");
 
 img.src=src;
-
 img.className="mapLayer";
 
 board.appendChild(img);
 
 }
 
+
+/* TOKEN */
 
 export function createToken(src){
 
@@ -30,27 +31,12 @@ board.appendChild(token);
 
 drag(token);
 
-}
-
-
-export function uploadMarker(file){
-
-const reader=new FileReader();
-
-reader.onload=()=>{
-
-createToken(reader.result);
-
-};
-
-reader.readAsDataURL(file);
+resize(token);
 
 }
 
 
-/* =========================
-DRAG
-========================= */
+/* DRAG */
 
 function drag(el){
 
@@ -80,22 +66,31 @@ document.onmousemove=null;
 }
 
 
-/* =========================
-DRAW SYSTEM
-========================= */
+/* RESIZE */
+
+function resize(el){
+
+el.onwheel=(e)=>{
+
+e.preventDefault();
+
+let w=el.offsetWidth;
+
+if(e.deltaY<0) w+=10;
+else w-=10;
+
+el.style.width=w+"px";
+
+};
+
+}
+
+
+/* DRAW */
 
 export function enableDrawing(){
 
-const board=document.getElementById("mapBoard");
-
-const canvas=document.createElement("canvas");
-
-canvas.width=board.clientWidth;
-canvas.height=board.clientHeight;
-
-canvas.className="drawLayer";
-
-board.appendChild(canvas);
+const canvas=document.getElementById("drawCanvas");
 
 const ctx=canvas.getContext("2d");
 
@@ -120,37 +115,65 @@ ctx.fill();
 }
 
 
-/* =========================
-FOG
-========================= */
+/* GRID */
 
-export function createFog(){
+export function drawGrid(){
 
-const board=document.getElementById("mapBoard");
+const canvas=document.getElementById("gridCanvas");
 
-const fog=document.createElement("canvas");
+const ctx=canvas.getContext("2d");
 
-fog.width=board.clientWidth;
-fog.height=board.clientHeight;
+const size=50;
 
-fog.className="fogLayer";
+for(let x=0;x<canvas.width;x+=size){
 
-board.appendChild(fog);
+ctx.moveTo(x,0);
+ctx.lineTo(x,canvas.height);
 
-const ctx=fog.getContext("2d");
+}
 
-ctx.fillStyle="black";
-ctx.fillRect(0,0,fog.width,fog.height);
+for(let y=0;y<canvas.height;y+=size){
 
-fog.onmousemove=(e)=>{
+ctx.moveTo(0,y);
+ctx.lineTo(canvas.width,y);
 
-if(e.buttons!==1)return;
+}
 
-ctx.globalCompositeOperation="destination-out";
+ctx.strokeStyle="#333";
+ctx.stroke();
 
-ctx.beginPath();
-ctx.arc(e.offsetX,e.offsetY,40,0,Math.PI*2);
-ctx.fill();
+}
+
+
+/* DISTANCE */
+
+export function measure(){
+
+const canvas=document.getElementById("drawCanvas");
+
+const ctx=canvas.getContext("2d");
+
+let start=null;
+
+canvas.onclick=(e)=>{
+
+if(!start){
+
+start=[e.offsetX,e.offsetY];
+
+}else{
+
+const dx=e.offsetX-start[0];
+const dy=e.offsetY-start[1];
+
+const dist=Math.sqrt(dx*dx+dy*dy);
+
+ctx.fillStyle="white";
+ctx.fillText(dist.toFixed(0)+"px",e.offsetX,e.offsetY);
+
+start=null;
+
+}
 
 };
 

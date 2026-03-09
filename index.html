@@ -13,8 +13,6 @@
 
 <body>
 
-<!-- LOGIN SCREEN -->
-
 <div id="authSection">
 
 <h1>Campaign Chronicle</h1>
@@ -35,8 +33,6 @@
 
 </div>
 
-
-<!-- MAIN APP -->
 
 <div id="appLayout" class="hidden">
 
@@ -65,42 +61,32 @@
 
 <div class="content">
 
-<h2 id="campaignTitle">Open a campaign</h2>
+<h2 id="campaignTitle">Map Board</h2>
 
 
-<!-- NOTES -->
-
-<div id="notesPage">
-
-<h3>Session Notes</h3>
-
-<textarea id="noteText"></textarea>
-
-<h3>Private Notes</h3>
-
-<textarea id="privateNotes"></textarea>
-
-</div>
-
-
-<!-- MAP BOARD -->
-
-<div id="mapsPage" class="hidden">
-
-<h2>Map Board</h2>
+<div id="mapsPage">
 
 <div class="mapControls">
 
 <button id="addMapBtn">Add Map</button>
 <button id="tokenBtn">Add Token</button>
-<button id="fogBtn">Fog of War</button>
-<button id="markerBtn">Add Marker</button>
+<button id="fogBtn">Fog</button>
+<button id="drawBtn">Draw</button>
+<button id="measureBtn">Measure</button>
+
+<button id="uploadMarkerBtn">Upload Marker</button>
 
 </div>
 
 <input type="file" id="mapUpload" hidden>
+<input type="file" id="markerUpload" hidden>
 
-<div id="mapBoard"></div>
+<div id="mapBoard">
+
+<canvas id="gridCanvas"></canvas>
+<canvas id="drawCanvas"></canvas>
+
+</div>
 
 </div>
 

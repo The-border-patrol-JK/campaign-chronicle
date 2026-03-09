@@ -123,3 +123,18 @@ height:500px;
 }
 
 }
+/* CURSOR */
+.cursor{
+
+position:absolute;
+
+width:10px;
+height:10px;
+
+background:red;
+
+border-radius:50%;
+
+pointer-events:none;
+
+}

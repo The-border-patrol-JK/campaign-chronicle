@@ -1,9 +1,23 @@
+import { setupAuth } from "./auth.js";
 import { addMap, createToken, createFog, addMarker } from "./map.js";
 import { createCampaign, joinWithCode } from "./campaign.js";
 
 function get(id){
 return document.getElementById(id);
 }
+
+
+/* =========================
+AUTH SYSTEM
+========================= */
+
+setupAuth((user)=>{
+
+get("authSection").classList.add("hidden");
+get("appLayout").classList.remove("hidden");
+
+});
+
 
 /* =========================
 PAGE SWITCH
@@ -79,10 +93,12 @@ reader.readAsDataURL(file);
 
 
 /* =========================
-TOKEN
+MAP TOOLS
 ========================= */
 
 const tokenBtn = get("tokenBtn");
+const fogBtn = get("fogBtn");
+const markerBtn = get("markerBtn");
 
 if(tokenBtn){
 
@@ -94,13 +110,6 @@ createToken("https://cdn-icons-png.flaticon.com/512/3522/3522099.png");
 
 }
 
-
-/* =========================
-FOG
-========================= */
-
-const fogBtn = get("fogBtn");
-
 if(fogBtn){
 
 fogBtn.onclick = ()=>{
@@ -110,13 +119,6 @@ createFog();
 };
 
 }
-
-
-/* =========================
-MARKER
-========================= */
-
-const markerBtn = get("markerBtn");
 
 if(markerBtn){
 
@@ -130,7 +132,7 @@ addMarker(200,200,"📍");
 
 
 /* =========================
-CREATE CAMPAIGN
+CAMPAIGN SYSTEM
 ========================= */
 
 const newCampaignBtn = get("newCampaignBtn");
@@ -145,10 +147,6 @@ createCampaign();
 
 }
 
-
-/* =========================
-JOIN CODE
-========================= */
 
 const joinBtn = get("joinBtn");
 

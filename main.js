@@ -1,42 +1,57 @@
-import { setupMap,setTool,clearMap,addMap } from "./map.js";
+import { addMap } from "./map.js";
 
+/* =========================
+MAP SYSTEM
+========================= */
+
+const addMapBtn = document.getElementById("addMapBtn");
 const mapUpload = document.getElementById("mapUpload");
 
-const addMapBtn=document.getElementById("addMapBtn");
-
-/* MAP SYSTEM */
-
-setupMap();
-
-document.getElementById("drawTool").onclick=()=>setTool("draw");
-document.getElementById("tokenTool").onclick=()=>setTool("token");
-document.getElementById("fogTool").onclick=()=>setTool("fog");
-document.getElementById("markerTool").onclick=()=>setTool("marker");
-
-document.getElementById("clearTool").onclick=clearMap;
-
-/* ADD MAP */
-
-addMapBtn.onclick=()=>{
+addMapBtn.onclick = () => {
 
 mapUpload.click();
 
 };
 
-mapUpload.onchange=(e)=>{
+mapUpload.onchange = (e) => {
 
-const file=e.target.files[0];
+const file = e.target.files[0];
 
 if(!file) return;
 
-const reader=new FileReader();
+const reader = new FileReader();
 
-reader.onload=()=>{
+reader.onload = () => {
 
 addMap(reader.result);
 
 };
 
 reader.readAsDataURL(file);
+
+};
+
+
+/* =========================
+PAGE SWITCHING
+========================= */
+
+const mapsPageBtn = document.getElementById("mapsPageBtn");
+const notesPageBtn = document.getElementById("notesPageBtn");
+
+const mapsPage = document.getElementById("mapsPage");
+const notesPage = document.getElementById("notesPage");
+
+mapsPageBtn.onclick = () => {
+
+mapsPage.classList.remove("hidden");
+notesPage.classList.add("hidden");
+
+};
+
+notesPageBtn.onclick = () => {
+
+notesPage.classList.remove("hidden");
+mapsPage.classList.add("hidden");
 
 };

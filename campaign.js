@@ -1,102 +1,89 @@
 import { db } from "./firebase.js";
 
 import {
-  collection,
-  addDoc,
-  query,
-  where,
-  onSnapshot,
-  doc,
-  setDoc,
-  updateDoc,
-  arrayUnion
+collection,
+addDoc,
+query,
+where,
+getDocs,
+updateDoc,
+doc,
+arrayUnion
 } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
 let currentUser = null;
 
 export function setUser(user){
-  currentUser = user;
+
+currentUser = user;
+
 }
 
-/* CREATE CAMPAIGN */
+
+/* =========================
+GENERATE JOIN CODE
+========================= */
+
+function generateCode(){
+
+return Math.floor(100000 + Math.random() * 900000).toString();
+
+}
+
+
+/* =========================
+CREATE CAMPAIGN
+========================= */
 
 export async function createCampaign(){
 
-  const name = prompt("Campaign name?");
-  if(!name) return;
+const name = prompt("Campaign name?");
 
-  await addDoc(collection(db,"campaigns"),{
-    name,
-    ownerId: currentUser.uid,
-    members:[currentUser.uid],
-    createdAt: new Date()
-  });
+if(!name) return;
+
+const code = generateCode();
+
+await addDoc(collection(db,"campaigns"),{
+
+name,
+code,
+
+ownerId: currentUser.uid,
+
+members:[currentUser.uid],
+
+roles:{
+[currentUser.uid]:"dm"
+}
+
+});
+
+alert("Campaign Join Code: " + code);
 
 }
 
-/* LOAD CAMPAIGNS */
 
-export function loadCampaigns(render){
+/* =========================
+JOIN CAMPAIGN BY CODE
+========================= */
 
-  const q = query(
-    collection(db,"campaigns"),
-    where("members","array-contains",currentUser.uid)
-  );
+export async function joinWithCode(code,userId){
 
-  onSnapshot(q,snap=>{
+const q = query(
+collection(db,"campaigns"),
+where("code","==",code)
+);
 
-    const campaigns=[];
+const snap = await getDocs(q);
 
-    snap.forEach(docSnap=>{
-      campaigns.push({
-        id:docSnap.id,
-        ...docSnap.data()
-      });
-    });
+snap.forEach(async(docSnap)=>{
 
-    render(campaigns);
+await updateDoc(doc(db,"campaigns",docSnap.id),{
 
-  });
+members: arrayUnion(userId)
 
-}
+});
 
-/* JOIN CAMPAIGN FROM LINK */
-
-export async function joinCampaign(campaignId,userId){
-
-  const ref = doc(db,"campaigns",campaignId);
-
-  await updateDoc(ref,{
-    members: arrayUnion(userId)
-  });
-
-}
-
-/* LIVE EDITOR */
-
-export function openEditor(campaignId,textarea){
-
-  const noteRef = doc(db,"campaigns",campaignId,"editor","live");
-
-  onSnapshot(noteRef,snap=>{
-
-    if(!snap.exists()) return;
-
-    const data = snap.data();
-
-    if(textarea.value !== data.text){
-      textarea.value = data.text;
-    }
-
-  });
-
-  textarea.addEventListener("input",async()=>{
-
-    await setDoc(noteRef,{
-      text:textarea.value,
-      updated:new Date()
-    });
-
-  });
+});
 
 }

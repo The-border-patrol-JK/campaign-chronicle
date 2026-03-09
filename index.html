@@ -4,14 +4,22 @@
 <head>
 
 <meta charset="UTF-8">
+
 <title>Campaign Chronicle</title>
 
 <link rel="stylesheet" href="styles.css">
+
 <link rel="icon" href="data:,">
 
 </head>
 
+
 <body>
+
+
+<!-- ======================
+AUTH
+====================== -->
 
 <div id="authSection">
 
@@ -29,12 +37,19 @@
 <hr>
 
 <input id="joinCodeInput" placeholder="Join Code">
+
 <button id="joinBtn">Join Campaign</button>
 
 </div>
 
 
+
+<!-- ======================
+APP
+====================== -->
+
 <div id="appLayout" class="hidden">
+
 
 <header>
 
@@ -46,7 +61,11 @@
 </header>
 
 
+
 <div class="layout">
+
+
+<!-- SIDEBAR -->
 
 <div class="sidebar">
 
@@ -59,9 +78,13 @@
 </div>
 
 
+
+<!-- CONTENT -->
+
 <div class="content">
 
 <h2 id="campaignTitle">Map Board</h2>
+
 
 
 <div id="mapsPage">
@@ -69,34 +92,53 @@
 <div class="mapControls">
 
 <button id="addMapBtn">Add Map</button>
+
 <button id="tokenBtn">Add Token</button>
-<button id="fogBtn">Fog</button>
+
 <button id="drawBtn">Draw</button>
+
 <button id="measureBtn">Measure</button>
 
 <button id="uploadMarkerBtn">Upload Marker</button>
 
+<button id="fireBtn">🔥 Fire Idea</button>
+
+<button id="backstoryBtn">🧙 Backstory Helper</button>
+
 </div>
 
+
 <input type="file" id="mapUpload" hidden>
+
 <input type="file" id="markerUpload" hidden>
+
+
 
 <div id="mapBoard">
 
 <canvas id="gridCanvas"></canvas>
+
 <canvas id="drawCanvas"></canvas>
 
 </div>
 
-</div>
 
 </div>
 
-</div>
+
 
 </div>
+
+
+</div>
+
+
+</div>
+
+
 
 <script type="module" src="main.js"></script>
 
 </body>
+
 </html>

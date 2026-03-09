@@ -15,9 +15,6 @@ board.appendChild(img)
 }
 
 
-
-/* TOKEN */
-
 export function createToken(src){
 
 const board=document.getElementById("mapBoard")
@@ -37,9 +34,6 @@ resize(token)
 
 }
 
-
-
-/* DRAG */
 
 function drag(el){
 
@@ -69,9 +63,6 @@ document.onmousemove=null
 }
 
 
-
-/* RESIZE */
-
 function resize(el){
 
 el.onwheel=(e)=>{
@@ -91,9 +82,6 @@ el.style.width=size+"px"
 
 }
 
-
-
-/* DRAW */
 
 export function enableDrawing(){
 
@@ -122,9 +110,6 @@ ctx.fill()
 
 }
 
-
-
-/* GRID */
 
 export function drawGrid(){
 
@@ -158,9 +143,6 @@ ctx.stroke()
 
 }
 
-
-
-/* MEASURE */
 
 export function measure(){
 

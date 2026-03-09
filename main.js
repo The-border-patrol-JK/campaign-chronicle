@@ -1,128 +1,99 @@
 import {
 addMap,
-createToken,
-enableDrawing,
-drawGrid,
-measure
-} from "./map.js"
+createToken
+} from "./map.js";
 
 import {
 createCampaign,
 joinCampaign
-} from "./campaign.js"
-
+} from "./campaign.js";
 
 function get(id){
-return document.getElementById(id)
+return document.getElementById(id);
 }
-
 
 /* CREATE CAMPAIGN */
 
-get("createCampaignBtn").onclick=async()=>{
+get("createCampaignBtn").onclick = async ()=>{
 
-const code=await createCampaign()
+const code = await createCampaign();
 
-alert("Campaign Code: "+code)
+if(code){
+
+alert("Campaign Code: " + code);
 
 }
 
+};
 
 /* JOIN CAMPAIGN */
 
-get("joinCampaignBtn").onclick=async()=>{
+get("joinCampaignBtn").onclick = async ()=>{
 
-const code=get("joinCodeInput").value
+const code = get("joinCodeInput").value;
 
-const result=await joinCampaign(code)
+const joined = await joinCampaign(code);
 
-if(result){
+if(joined){
 
-alert("Joined campaign "+code)
-
-}
+alert("Joined campaign " + code);
 
 }
 
+};
 
 /* MAP UPLOAD */
 
-get("addMapBtn").onclick=()=>{
+get("addMapBtn").onclick = ()=>{
 
-get("mapUpload").click()
+get("mapUpload").click();
 
-}
+};
 
+get("mapUpload").onchange = (e)=>{
 
-get("mapUpload").onchange=(e)=>{
+const file = e.target.files[0];
 
-const file=e.target.files[0]
+const reader = new FileReader();
 
-const reader=new FileReader()
+reader.onload = ()=>{
 
-reader.onload=()=>{
+addMap(reader.result);
 
-addMap(reader.result)
+};
 
-}
+reader.readAsDataURL(file);
 
-reader.readAsDataURL(file)
-
-}
-
+};
 
 /* TOKEN */
 
-get("tokenBtn").onclick=()=>{
+get("tokenBtn").onclick = ()=>{
 
-createToken("https://cdn-icons-png.flaticon.com/512/3522/3522099.png")
+createToken("https://cdn-icons-png.flaticon.com/512/3522/3522099.png");
 
-}
+};
 
+/* MARKER UPLOAD */
 
-/* DRAW */
+get("uploadMarkerBtn").onclick = ()=>{
 
-get("drawBtn").onclick=()=>{
+get("markerUpload").click();
 
-enableDrawing()
+};
 
-}
+get("markerUpload").onchange = (e)=>{
 
+const file = e.target.files[0];
 
-/* GRID */
+const reader = new FileReader();
 
-drawGrid()
+reader.onload = ()=>{
 
+createToken(reader.result);
 
-/* MEASURE */
+};
 
-get("measureBtn").onclick=()=>{
+reader.readAsDataURL(file);
 
-measure()
-
-}
-
-
-/* MARKER */
-
-get("uploadMarkerBtn").onclick=()=>{
-
-get("markerUpload").click()
-
-}
-
-get("markerUpload").onchange=(e)=>{
-
-const file=e.target.files[0]
-
-const reader=new FileReader()
-
-reader.onload=()=>{
-
-createToken(reader.result)
-
-}
-
-reader.readAsDataURL(file)
-
-}
+};

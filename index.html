@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<meta charset="UTF-8">
+<title>Campaign Chronicle</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+<header>
+
+<h1>Campaign Chronicle</h1>
+
+<button id="createCampaignBtn">Create Campaign</button>
+
+<input id="joinCodeInput" placeholder="Join Code">
+<button id="joinCampaignBtn">Join Campaign</button>
+
+<button id="diceBtn">Roll D20</button>
+
+</header>
+
+
+<div class="layout">
+
+<div class="sidebar">
+
+<h3>Dice Log</h3>
+<div id="diceLog"></div>
+
+</div>
+
+
+<div class="content">
+
+<div class="mapControls">
+
+<button id="addMapBtn">Add Map</button>
+<button id="tokenBtn">Add Token</button>
+<button id="drawBtn">Draw</button>
+<button id="fogBtn">Fog</button>
+<button id="measureBtn">Measure</button>
+<button id="uploadMarkerBtn">Upload Marker</button>
+
+</div>
+
+<input type="file" id="mapUpload" hidden>
+<input type="file" id="markerUpload" hidden>
+
+<div id="mapBoard">
+
+<canvas id="gridCanvas"></canvas>
+<canvas id="drawCanvas"></canvas>
+
+</div>
+
+</div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+
+</body>
+</html>

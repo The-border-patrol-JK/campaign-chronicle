@@ -626,6 +626,8 @@ function onBoardDown(event) {
   const point = boardPoint(event.clientX, event.clientY);
 
   if (state.activeTool === "pan") {
+    event.preventDefault();
+    els.boardViewport.setPointerCapture?.(event.pointerId);
     state.panning = {
       pointerId: event.pointerId,
       startClient: { x: event.clientX, y: event.clientY },
@@ -635,6 +637,8 @@ function onBoardDown(event) {
   }
 
   if (item && state.activeTool === "move") {
+    event.preventDefault();
+    els.boardViewport.setPointerCapture?.(event.pointerId);
     selectItem(item.dataset.kind, item.dataset.id);
     const entity = selectedEntity();
     state.dragging = {
@@ -648,6 +652,8 @@ function onBoardDown(event) {
   }
 
   if (state.activeTool === "draw") {
+    event.preventDefault();
+    els.boardViewport.setPointerCapture?.(event.pointerId);
     state.pendingStroke = {
       color: els.drawColorInput.value,
       size: Number(els.brushSizeInput.value),
@@ -663,6 +669,8 @@ function onBoardDown(event) {
       return;
     }
 
+    event.preventDefault();
+    els.boardViewport.setPointerCapture?.(event.pointerId);
     state.pendingFog = {
       mode: state.activeTool === "fog-reveal" ? "reveal" : "cover",
       size: Number(els.brushSizeInput.value),
@@ -747,6 +755,10 @@ function onBoardUp(event) {
     }).catch(console.error);
     state.pendingFog = null;
     renderOverlays();
+  }
+
+  if (els.boardViewport.hasPointerCapture?.(event.pointerId)) {
+    els.boardViewport.releasePointerCapture(event.pointerId);
   }
 }
 

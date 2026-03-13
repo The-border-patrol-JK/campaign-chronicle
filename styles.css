@@ -88,7 +88,7 @@ textarea {
 }
 
 .hidden {
-  display: none;
+  display: none !important;
 }
 
 .app-shell {
@@ -395,6 +395,7 @@ textarea {
   position: relative;
   width: 2200px;
   height: 1400px;
+  touch-action: none;
 }
 
 .layer,
@@ -402,6 +403,10 @@ textarea {
 #fogCanvas {
   position: absolute;
   inset: 0;
+}
+
+.layer {
+  pointer-events: none;
 }
 
 #drawCanvas,
@@ -415,6 +420,8 @@ textarea {
   overflow: hidden;
   cursor: grab;
   user-select: none;
+  pointer-events: auto;
+  touch-action: none;
 }
 
 .scene-item img {
@@ -450,6 +457,7 @@ textarea {
   color: #fff6dd;
   font-size: 0.78rem;
   backdrop-filter: blur(10px);
+  pointer-events: none;
 }
 
 .cursor-dot {

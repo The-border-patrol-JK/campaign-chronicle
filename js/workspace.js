@@ -92,7 +92,12 @@ async function init() {
     }
   });
 
-  await ensureSignedIn();
+  try {
+    await ensureSignedIn();
+  } catch (error) {
+    console.error("Anonymous sign-in failed", error);
+    setStatus("Firebase sign-in failed. Enable Anonymous Auth in Firebase Authentication.");
+  }
   window.setInterval(() => {
     renderMembers();
     renderOverview();
@@ -184,8 +189,7 @@ async function createCampaign() {
 
   const code = await generateCode();
   const now = Date.now();
-  const batch = writeBatch(db);
-  batch.set(doc(db, "campaigns", code), {
+  await setDoc(doc(db, "campaigns", code), {
     name,
     code,
     ownerId: state.user.uid,
@@ -193,13 +197,15 @@ async function createCampaign() {
     createdAt: now,
     updatedAt: now
   });
-  batch.set(doc(db, "users", state.user.uid, "campaigns", code), {
+
+  await setDoc(doc(db, "users", state.user.uid, "campaigns", code), {
     code,
     name,
     role: "DM",
     updatedAt: now
   });
-  batch.set(doc(db, "campaigns", code, "members", state.user.uid), {
+
+  await setDoc(doc(db, "campaigns", code, "members", state.user.uid), {
     name: state.profile.name,
     color: state.profile.color,
     role: "DM",
@@ -208,14 +214,15 @@ async function createCampaign() {
     currentMapId: null,
     activeView: state.activeView
   });
-  batch.set(doc(db, "campaigns", code, "sharedPages", "session-log"), {
+
+  await setDoc(doc(db, "campaigns", code, "sharedPages", "session-log"), {
     title: "Session Log",
     content: "",
     createdAt: now,
     updatedAt: now,
     createdBy: state.user.uid
   });
-  await batch.commit();
+
   els.campaignNameInput.value = "";
   await openCampaign(code);
   alert(`Campaign created. Share join code ${code} with your players.`);

@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Campaign Chronicle</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand-card">
+      <p class="eyebrow">Live Campaign Hub</p>
+      <h1>Campaign Chronicle</h1>
+      <p class="brand-copy">Shared maps, fog of war, notes, and player markers that stay in sync while your table plays.</p>
+    </div>
+
+    <section class="panel">
+      <h2>Profile</h2>
+      <label class="stacked-field">
+        <span>Player name</span>
+        <input id="displayNameInput" maxlength="24" placeholder="Your table name">
+      </label>
+      <div class="color-row">
+        <label class="stacked-field compact">
+          <span>Color</span>
+          <input id="playerColorInput" type="color" value="#d97706">
+        </label>
+        <button id="saveProfileBtn" class="secondary">Save Profile</button>
+      </div>
+      <p id="authStatus" class="muted">Connecting to Firebase...</p>
+    </section>
+
+    <section class="panel">
+      <h2>Campaigns</h2>
+      <label class="stacked-field">
+        <span>New campaign name</span>
+        <input id="campaignNameInput" placeholder="Shadow of the Hollow King">
+      </label>
+      <button id="createCampaignBtn">Create Campaign</button>
+      <div class="join-row">
+        <input id="joinCodeInput" maxlength="6" placeholder="Join code">
+        <button id="joinCampaignBtn" class="secondary">Join</button>
+      </div>
+      <div id="campaignList" class="list"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-heading">
+        <h2>Players</h2>
+        <span id="memberCount" class="pill">0</span>
+      </div>
+      <div id="memberList" class="member-list"></div>
+    </section>
+  </aside>
+
+  <main class="workspace">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Active Campaign</p>
+        <h2 id="campaignTitle">Choose or create a campaign</h2>
+        <p id="campaignMeta" class="muted">Your live map, campaign notes, and private notes will show up here.</p>
+      </div>
+
+      <div class="topbar-actions">
+        <button class="nav-btn is-active" data-view="campaign">Campaign</button>
+        <button class="nav-btn" data-view="map">Map</button>
+        <button class="nav-btn" data-view="shared-notes">Shared Notes</button>
+        <button class="nav-btn" data-view="private-notes">Private Notes</button>
+        <button id="copyCodeBtn" class="secondary">Copy Join Code</button>
+      </div>
+    </header>
+
+    <section id="campaignView" class="view is-active">
+      <div class="overview-grid">
+        <article class="panel hero-panel">
+          <p class="eyebrow">Campaign Summary</p>
+          <h3 id="overviewName">No campaign selected</h3>
+          <div class="summary-stats">
+            <div>
+              <span class="stat-label">Join code</span>
+              <strong id="overviewCode">-</strong>
+            </div>
+            <div>
+              <span class="stat-label">Maps</span>
+              <strong id="overviewMapCount">0</strong>
+            </div>
+            <div>
+              <span class="stat-label">Shared pages</span>
+              <strong id="overviewPageCount">0</strong>
+            </div>
+            <div>
+              <span class="stat-label">Online players</span>
+              <strong id="overviewOnlineCount">0</strong>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-heading">
+            <h3>Campaign Notes</h3>
+            <span id="campaignOwnerLabel" class="pill">Owner: -</span>
+          </div>
+          <textarea id="campaignSummaryInput" class="campaign-summary" placeholder="Session goals, key NPCs, loot, clues, or reminders for the whole table."></textarea>
+        </article>
+      </div>
+    </section>
+
+    <section id="mapView" class="view">
+      <div class="map-toolbar panel">
+        <div class="toolbar-group">
+          <input id="mapUpload" type="file" accept="image/*" multiple hidden>
+          <button id="uploadMapsBtn">Upload Maps</button>
+          <input id="markerUpload" type="file" accept="image/*" hidden>
+          <button id="uploadMarkerBtn" class="secondary">Upload Marker</button>
+          <button id="deleteSelectionBtn" class="ghost">Delete Selected</button>
+        </div>
+
+        <div class="toolbar-group">
+          <button class="tool-btn is-active" data-tool="move">Move</button>
+          <button class="tool-btn" data-tool="pan">Pan</button>
+          <button class="tool-btn" data-tool="draw">Draw</button>
+          <button class="tool-btn" data-tool="fog-cover">Fog</button>
+          <button class="tool-btn" data-tool="fog-reveal">Reveal</button>
+        </div>
+
+        <div class="toolbar-group compact">
+          <label class="stacked-field compact">
+            <span>Brush</span>
+            <input id="brushSizeInput" type="range" min="12" max="120" value="42">
+          </label>
+          <label class="stacked-field compact">
+            <span>Ink</span>
+            <input id="drawColorInput" type="color" value="#f97316">
+          </label>
+          <label class="stacked-field compact">
+            <span>Zoom</span>
+            <input id="zoomInput" type="range" min="40" max="220" value="100">
+          </label>
+          <button id="toggleFogBtn" class="secondary">Fog: Off</button>
+          <button id="clearDrawingBtn" class="ghost">Clear Ink</button>
+          <button id="clearFogBtn" class="ghost">Reset Fog</button>
+        </div>
+      </div>
+
+      <div class="map-layout">
+        <aside class="panel map-panel">
+          <div class="panel-heading">
+            <h3>Maps</h3>
+            <span id="mapCount" class="pill">0</span>
+          </div>
+          <div id="mapList" class="list map-list"></div>
+        </aside>
+
+        <div class="board-column">
+          <div class="panel board-panel">
+            <div class="board-header">
+              <div>
+                <p class="eyebrow">Battle Board</p>
+                <h3 id="activeMapName">Upload a map to begin</h3>
+              </div>
+              <p id="toolHint" class="muted">Move items with drag. Draw and fog tools work on the active map.</p>
+            </div>
+
+            <div id="boardViewport" class="board-viewport">
+              <div id="boardStage" class="board-stage">
+                <div id="mapBoard" class="map-board">
+                  <div id="mapItemLayer" class="layer"></div>
+                  <canvas id="drawCanvas"></canvas>
+                  <canvas id="fogCanvas"></canvas>
+                  <div id="tokenLayer" class="layer"></div>
+                  <div id="cursorLayer" class="layer"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="panel inspector-panel">
+          <div class="panel-heading">
+            <h3>Inspector</h3>
+            <span id="selectionLabel" class="pill">Nothing selected</span>
+          </div>
+
+          <div id="inspectorEmpty" class="empty-state">Pick a map or marker to move it around and resize it.</div>
+
+          <div id="inspectorForm" class="inspector-form hidden">
+            <label class="stacked-field">
+              <span>Name</span>
+              <input id="selectedNameInput" placeholder="Name">
+            </label>
+            <label class="stacked-field">
+              <span id="sizeLabel">Size</span>
+              <input id="selectedSizeInput" type="range" min="40" max="2200" value="280">
+            </label>
+            <div class="number-row">
+              <label class="stacked-field compact">
+                <span>X</span>
+                <input id="selectedXInput" type="number" step="10">
+              </label>
+              <label class="stacked-field compact">
+                <span>Y</span>
+                <input id="selectedYInput" type="number" step="10">
+              </label>
+            </div>
+            <p id="selectionMeta" class="muted"></p>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="sharedNotesView" class="view">
+      <div class="notes-layout">
+        <aside class="panel notes-side">
+          <div class="panel-heading">
+            <h3>Shared Pages</h3>
+            <button id="addSharedPageBtn" class="secondary">New Page</button>
+          </div>
+          <div id="sharedPageList" class="list"></div>
+        </aside>
+
+        <div class="panel notes-editor">
+          <label class="stacked-field">
+            <span>Page title</span>
+            <input id="sharedTitleInput" placeholder="Shared page title">
+          </label>
+          <label class="stacked-field grow">
+            <span>Notes</span>
+            <textarea id="sharedBodyInput" placeholder="Session recap, loot, clues, NPC voices, room ideas..."></textarea>
+          </label>
+          <p id="sharedSaveStatus" class="muted">Shared pages autosave.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="privateNotesView" class="view">
+      <div class="notes-layout">
+        <aside class="panel notes-side">
+          <div class="panel-heading">
+            <h3>Your Private Pages</h3>
+            <button id="addPrivatePageBtn" class="secondary">New Page</button>
+          </div>
+          <div id="privatePageList" class="list"></div>
+        </aside>
+
+        <div class="panel notes-editor">
+          <label class="stacked-field">
+            <span>Page title</span>
+            <input id="privateTitleInput" placeholder="Private page title">
+          </label>
+          <label class="stacked-field grow">
+            <span>Notes</span>
+            <textarea id="privateBodyInput" placeholder="Hidden plans, DM prep, character secrets, puzzle answers..."></textarea>
+          </label>
+          <p id="privateSaveStatus" class="muted">Private pages autosave only for you.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script type="module" src="./js/main.js"></script>
+</body>
+</html>

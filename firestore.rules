@@ -1,0 +1,57 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isCampaignMember(campaignId) {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/campaigns/$(campaignId)/members/$(request.auth.uid));
+    }
+
+    match /campaigns/{campaignId} {
+      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow read: if signedIn();
+      allow update, delete: if isCampaignMember(campaignId);
+
+      match /members/{userId} {
+        allow read: if isCampaignMember(campaignId);
+        allow create, update: if isCampaignMember(campaignId) || request.auth.uid == userId;
+        allow delete: if request.auth.uid == userId;
+      }
+
+      match /maps/{mapId} {
+        allow read, write: if isCampaignMember(campaignId);
+
+        match /tokens/{tokenId} {
+          allow read, write: if isCampaignMember(campaignId);
+        }
+
+        match /drawings/{drawingId} {
+          allow read, write: if isCampaignMember(campaignId);
+        }
+
+        match /fogActions/{fogActionId} {
+          allow read, write: if isCampaignMember(campaignId);
+        }
+      }
+
+      match /sharedPages/{pageId} {
+        allow read, write: if isCampaignMember(campaignId);
+      }
+    }
+
+    match /users/{userId} {
+      allow read, write: if signedIn() && request.auth.uid == userId;
+
+      match /campaigns/{campaignId} {
+        allow read, write: if signedIn() && request.auth.uid == userId;
+      }
+
+      match /campaignNotes/{campaignId}/pages/{pageId} {
+        allow read, write: if signedIn() && request.auth.uid == userId;
+      }
+    }
+  }
+}

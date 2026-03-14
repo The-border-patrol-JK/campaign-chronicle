@@ -27,6 +27,8 @@ const TOKEN_MAX = 256;
 
 const state = {
   user: null,
+  authReady: false,
+  authFailed: false,
   profile: loadProfile(),
   activeView: "campaign",
   activeTool: "move",
@@ -76,14 +78,25 @@ async function init() {
   renderNotes("shared");
   renderNotes("private");
   updateInspector();
+  updateAuthControls();
   setStatus("Connecting to Firebase...");
 
   onAuthStateChanged(auth, async user => {
-    if (!user || state.user?.uid === user.uid) {
+    if (!user) {
+      state.user = null;
+      state.authReady = false;
+      updateAuthControls();
+      return;
+    }
+
+    if (state.user?.uid === user.uid && state.authReady) {
       return;
     }
 
     state.user = user;
+    state.authReady = true;
+    state.authFailed = false;
+    updateAuthControls();
     setStatus(`Connected as ${state.profile.name}`);
     watchCampaignList();
 
@@ -96,6 +109,8 @@ async function init() {
     await ensureSignedIn();
   } catch (error) {
     console.error("Anonymous sign-in failed", error);
+    state.authFailed = true;
+    updateAuthControls();
     setStatus("Firebase sign-in failed. Enable Anonymous Auth in Firebase Authentication.");
   }
   window.setInterval(() => {
@@ -131,6 +146,9 @@ function bindUi() {
   els.saveProfileBtn.addEventListener("click", saveProfile);
   els.createCampaignBtn.addEventListener("click", createCampaign);
   els.joinCampaignBtn.addEventListener("click", joinCampaign);
+  els.campaignNameInput.addEventListener("keydown", onCampaignNameKeyDown);
+  els.joinCodeInput.addEventListener("input", onJoinCodeInput);
+  els.joinCodeInput.addEventListener("keydown", onJoinCodeKeyDown);
   els.copyCodeBtn.addEventListener("click", copyJoinCode);
   els.uploadMapsBtn.addEventListener("click", () => els.mapUpload.click());
   els.uploadMarkerBtn.addEventListener("click", () => els.markerUpload.click());
@@ -179,90 +197,163 @@ function setStatus(text) {
   els.authStatus.textContent = text;
 }
 
+function updateAuthControls() {
+  const waitingForAuth = !state.authReady;
+  els.createCampaignBtn.disabled = waitingForAuth;
+  els.joinCampaignBtn.disabled = waitingForAuth;
+  els.campaignNameInput.disabled = waitingForAuth;
+  els.joinCodeInput.disabled = waitingForAuth;
+}
+
+function onCampaignNameKeyDown(event) {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  createCampaign().catch(console.error);
+}
+
+function onJoinCodeInput() {
+  const normalized = normalizeCampaignCode(els.joinCodeInput.value);
+  if (els.joinCodeInput.value !== normalized) {
+    els.joinCodeInput.value = normalized;
+  }
+}
+
+function onJoinCodeKeyDown(event) {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  joinCampaign().catch(console.error);
+}
+
+async function requireSignedIn() {
+  if (state.user) {
+    return state.user;
+  }
+
+  if (!state.authFailed) {
+    setStatus("Finishing Firebase sign-in...");
+  }
+
+  try {
+    const user = await ensureSignedIn();
+    state.user = user;
+    state.authReady = true;
+    state.authFailed = false;
+    updateAuthControls();
+    return user;
+  } catch (error) {
+    console.error("Anonymous sign-in failed", error);
+    state.authFailed = true;
+    updateAuthControls();
+    setStatus("Firebase sign-in failed. Enable Anonymous Auth in Firebase Authentication.");
+    alert("Sign-in is not ready yet. Enable Anonymous Auth in Firebase Authentication, then refresh and try again.");
+    return null;
+  }
+}
+
 async function createCampaign() {
-  if (!state.user) return;
+  if (!await requireSignedIn()) return;
   const name = els.campaignNameInput.value.trim();
   if (!name) {
     alert("Add a campaign name first.");
     return;
   }
 
-  const code = await generateCode();
-  const now = Date.now();
-  await setDoc(doc(db, "campaigns", code), {
-    name,
-    code,
-    ownerId: state.user.uid,
-    summary: "",
-    createdAt: now,
-    updatedAt: now
-  });
+  try {
+    const code = await generateCode();
+    const now = Date.now();
+    await setDoc(doc(db, "campaigns", code), {
+      name,
+      code,
+      ownerId: state.user.uid,
+      summary: "",
+      createdAt: now,
+      updatedAt: now
+    });
 
-  await setDoc(doc(db, "users", state.user.uid, "campaigns", code), {
-    code,
-    name,
-    role: "DM",
-    updatedAt: now
-  });
+    await setDoc(doc(db, "users", state.user.uid, "campaigns", code), {
+      code,
+      name,
+      role: "DM",
+      updatedAt: now
+    });
 
-  await setDoc(doc(db, "campaigns", code, "members", state.user.uid), {
-    name: state.profile.name,
-    color: state.profile.color,
-    role: "DM",
-    heartbeatAt: now,
-    joinedAt: now,
-    currentMapId: null,
-    activeView: state.activeView
-  });
+    await setDoc(doc(db, "campaigns", code, "members", state.user.uid), {
+      name: state.profile.name,
+      color: state.profile.color,
+      role: "DM",
+      heartbeatAt: now,
+      joinedAt: now,
+      currentMapId: null,
+      activeView: state.activeView
+    });
 
-  await setDoc(doc(db, "campaigns", code, "sharedPages", "session-log"), {
-    title: "Session Log",
-    content: "",
-    createdAt: now,
-    updatedAt: now,
-    createdBy: state.user.uid
-  });
+    await setDoc(doc(db, "campaigns", code, "sharedPages", "session-log"), {
+      title: "Session Log",
+      content: "",
+      createdAt: now,
+      updatedAt: now,
+      createdBy: state.user.uid
+    });
 
-  els.campaignNameInput.value = "";
-  await openCampaign(code);
-  alert(`Campaign created. Share join code ${code} with your players.`);
+    els.campaignNameInput.value = "";
+    await openCampaign(code);
+    setStatus(`Campaign created with join code ${code}`);
+    alert(`Campaign created. Share join code ${code} with your players.`);
+  } catch (error) {
+    console.error("Failed to create campaign", error);
+    setStatus("Campaign creation failed. Check Firebase Authentication and Firestore rules.");
+    alert("Campaign creation failed. Refresh the page and try again.");
+  }
 }
 
 async function joinCampaign() {
-  if (!state.user) return;
-  const code = els.joinCodeInput.value.trim().toUpperCase();
+  if (!await requireSignedIn()) return;
+  const code = normalizeCampaignCode(els.joinCodeInput.value);
+  els.joinCodeInput.value = code;
   if (!code) {
     alert("Enter a join code first.");
     return;
   }
 
-  const snap = await getDoc(doc(db, "campaigns", code));
-  if (!snap.exists()) {
-    alert("That campaign code was not found.");
+  if (code.length !== 6) {
+    alert("Join codes are 6 characters. Double-check the code and try again.");
     return;
   }
 
-  const campaign = snap.data();
-  const now = Date.now();
-  const batch = writeBatch(db);
-  batch.set(doc(db, "users", state.user.uid, "campaigns", code), {
-    code,
-    name: campaign.name,
-    role: campaign.ownerId === state.user.uid ? "DM" : "Player",
-    updatedAt: now
-  }, { merge: true });
-  batch.set(doc(db, "campaigns", code, "members", state.user.uid), {
-    name: state.profile.name,
-    color: state.profile.color,
-    role: campaign.ownerId === state.user.uid ? "DM" : "Player",
-    heartbeatAt: now,
-    joinedAt: now,
-    currentMapId: null,
-    activeView: state.activeView
-  }, { merge: true });
-  await batch.commit();
-  els.joinCodeInput.value = "";
-  await openCampaign(code);
+  try {
+    const snap = await getDoc(doc(db, "campaigns", code));
+    if (!snap.exists()) {
+      alert(`No campaign was found for code ${code}.`);
+      return;
+    }
+
+    const campaign = snap.data();
+    const now = Date.now();
+    const batch = writeBatch(db);
+    batch.set(doc(db, "users", state.user.uid, "campaigns", code), {
+      code,
+      name: campaign.name,
+      role: campaign.ownerId === state.user.uid ? "DM" : "Player",
+      updatedAt: now
+    }, { merge: true });
+    batch.set(doc(db, "campaigns", code, "members", state.user.uid), {
+      name: state.profile.name,
+      color: state.profile.color,
+      role: campaign.ownerId === state.user.uid ? "DM" : "Player",
+      heartbeatAt: now,
+      joinedAt: now,
+      currentMapId: null,
+      activeView: state.activeView
+    }, { merge: true });
+    await batch.commit();
+    els.joinCodeInput.value = "";
+    await openCampaign(code);
+    setStatus(`Joined ${campaign.name} with code ${code}`);
+  } catch (error) {
+    console.error("Failed to join campaign", error);
+    setStatus("Join failed. Check Firebase Authentication and Firestore rules.");
+    alert("Couldn't join that campaign right now. Refresh and try again.");
+  }
 }
 
 function watchCampaignList() {
@@ -1229,6 +1320,13 @@ function sanitizeName(value) {
 
 function sanitizeLabel(value) {
   return value.trim().replace(/\s+/g, " ").slice(0, 36);
+}
+
+function normalizeCampaignCode(value) {
+  return String(value)
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 6);
 }
 
 function escapeHtml(value) {

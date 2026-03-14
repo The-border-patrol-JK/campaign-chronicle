@@ -128,7 +128,7 @@ function cacheEls() {
     "copyCodeBtn", "campaignView", "mapView", "sharedNotesView", "privateNotesView",
     "overviewName", "overviewCode", "overviewMapCount", "overviewPageCount",
     "overviewOnlineCount", "campaignOwnerLabel", "campaignSummaryInput",
-    "mapUpload", "markerUpload", "uploadMapsBtn", "uploadMarkerBtn", "deleteSelectionBtn",
+    "mapUpload", "markerUpload", "uploadMapsBtn", "placePlayerMarkerBtn", "uploadMarkerBtn", "deleteSelectionBtn",
     "brushSizeInput", "drawColorInput", "zoomInput", "toggleFogBtn", "clearDrawingBtn",
     "clearFogBtn", "mapList", "mapCount", "activeMapName", "toolHint", "boardViewport",
     "boardStage", "mapBoard", "mapItemLayer", "tokenLayer", "cursorLayer", "drawCanvas",
@@ -151,6 +151,7 @@ function bindUi() {
   els.joinCodeInput.addEventListener("keydown", onJoinCodeKeyDown);
   els.copyCodeBtn.addEventListener("click", copyJoinCode);
   els.uploadMapsBtn.addEventListener("click", () => els.mapUpload.click());
+  els.placePlayerMarkerBtn.addEventListener("click", placePlayerMarker);
   els.uploadMarkerBtn.addEventListener("click", () => els.markerUpload.click());
   els.mapUpload.addEventListener("change", () => uploadMaps([...els.mapUpload.files]));
   els.markerUpload.addEventListener("change", () => uploadMarker(els.markerUpload.files[0]));
@@ -421,6 +422,15 @@ async function openCampaign(campaignId) {
   }));
 
   state.unsubs.push(onSnapshot(
+    query(collection(db, "campaigns", campaignId, "tokens"), orderBy("createdAt", "asc")),
+    snapshot => {
+      state.tokens = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+      renderBoard();
+      updateInspector();
+    }
+  ));
+
+  state.unsubs.push(onSnapshot(
     query(collection(db, "campaigns", campaignId, "sharedPages"), orderBy("createdAt", "asc")),
     snapshot => {
       state.sharedPages = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
@@ -467,10 +477,6 @@ function watchCurrentMap() {
   }
 
   const path = ["campaigns", state.currentCampaignId, "maps", state.currentMapId];
-  state.mapUnsubs.push(onSnapshot(query(collection(db, ...path, "tokens"), orderBy("createdAt", "asc")), snapshot => {
-    state.tokens = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
-    renderBoard();
-  }));
   state.mapUnsubs.push(onSnapshot(query(collection(db, ...path, "drawings"), orderBy("createdAt", "asc")), snapshot => {
     state.drawings = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
     renderOverlays();
@@ -578,7 +584,7 @@ function renderBoard() {
 
   els.tokenLayer.innerHTML = state.tokens.map(token => `
     <div class="scene-item token-item ${isSelected("token", token.id) ? "is-selected" : ""}" data-kind="token" data-id="${token.id}" style="left:${token.x}px;top:${token.y}px;width:${token.size}px;height:${token.size}px;">
-      <img src="${escapeHtml(token.imageUrl)}" alt="${escapeHtml(token.name)}">
+      ${renderTokenVisual(token)}
       <div class="scene-tag">${escapeHtml(token.name)}</div>
     </div>
   `).join("");
@@ -934,7 +940,7 @@ async function flushPendingPatches() {
     if (item.kind === "map") {
       return updateDoc(doc(db, "campaigns", state.currentCampaignId, "maps", item.id), item.patch);
     }
-    return updateDoc(doc(db, "campaigns", state.currentCampaignId, "maps", item.mapId, "tokens", item.id), item.patch);
+    return updateDoc(doc(db, "campaigns", state.currentCampaignId, "tokens", item.id), item.patch);
   }));
 }
 
@@ -1032,6 +1038,41 @@ function drawFogAction(ctx, action) {
   ctx.restore();
 }
 
+function renderTokenVisual(token) {
+  if (token.imageUrl) {
+    return `<img src="${escapeHtml(token.imageUrl)}" alt="${escapeHtml(token.name)}">`;
+  }
+
+  return `
+    <div class="token-fallback" style="background:${escapeHtml(token.color || DEFAULT_PROFILE.color)}">
+      ${escapeHtml(token.label || "P")}
+    </div>
+  `;
+}
+
+function findOwnedToken() {
+  if (!state.user) return null;
+  return state.tokens.find(token => token.ownerId === state.user.uid) || null;
+}
+
+function profileMarkerLabel() {
+  const words = sanitizeName(state.profile.name).split(" ").filter(Boolean);
+  const initials = words.slice(0, 2).map(word => word[0]).join("");
+  return (initials || "P").toUpperCase();
+}
+
+function markerSpawnPoint() {
+  const map = getActiveMap();
+  if (map) {
+    return {
+      x: Math.round(map.x + Math.min(map.width * 0.18, 180)),
+      y: Math.round(map.y + Math.min(map.height * 0.18, 180))
+    };
+  }
+
+  return { x: 260, y: 260 };
+}
+
 async function uploadMaps(files) {
   if (!state.currentCampaignId) {
     alert("Open a campaign before uploading maps.");
@@ -1069,32 +1110,81 @@ async function uploadMaps(files) {
   setView("map");
 }
 
+async function placePlayerMarker() {
+  if (!state.currentCampaignId || !state.user) {
+    alert("Open a campaign first.");
+    return;
+  }
+
+  const existing = findOwnedToken();
+  if (existing) {
+    selectItem("token", existing.id);
+    setView("map");
+    setStatus(`Selected your marker for ${state.profile.name}`);
+    return;
+  }
+
+  const now = Date.now();
+  const spawn = markerSpawnPoint();
+  const tokenRef = await addDoc(collection(db, "campaigns", state.currentCampaignId, "tokens"), {
+    name: sanitizeLabel(state.profile.name) || DEFAULT_PROFILE.name,
+    ownerId: state.user.uid,
+    label: profileMarkerLabel(),
+    color: state.profile.color,
+    x: spawn.x,
+    y: spawn.y,
+    size: 84,
+    createdAt: now,
+    updatedAt: now
+  });
+
+  setView("map");
+  selectItem("token", tokenRef.id);
+  setStatus("Placed your player marker on the board");
+}
+
 async function uploadMarker(file) {
-  if (!state.currentCampaignId || !state.currentMapId || !file) {
-    if (!state.currentCampaignId || !state.currentMapId) {
-      alert("Open a campaign and choose a map first.");
+  if (!state.currentCampaignId || !state.user || !file) {
+    if (!state.currentCampaignId) {
+      alert("Open a campaign first.");
     }
     return;
   }
 
   const now = Date.now();
-  const storagePath = `campaigns/${state.currentCampaignId}/maps/${state.currentMapId}/markers/${now}-${safeFileName(file.name)}`;
+  const existing = findOwnedToken();
+  const spawn = markerSpawnPoint();
+  const storagePath = `campaigns/${state.currentCampaignId}/tokens/${state.user.uid}/${now}-${safeFileName(file.name)}`;
   const fileRef = ref(storage, storagePath);
   await uploadBytes(fileRef, file);
   const imageUrl = await getDownloadURL(fileRef);
-  await addDoc(collection(db, "campaigns", state.currentCampaignId, "maps", state.currentMapId, "tokens"), {
-    name: fileBaseName(file.name),
+  const payload = {
+    name: sanitizeLabel(state.profile.name) || fileBaseName(file.name),
     imageUrl,
     storagePath,
+    label: profileMarkerLabel(),
+    color: state.profile.color,
     ownerId: state.user.uid,
-    x: 260,
-    y: 260,
-    size: 84,
-    createdAt: now,
+    x: existing?.x ?? spawn.x,
+    y: existing?.y ?? spawn.y,
+    size: existing?.size ?? 84,
     updatedAt: now
-  });
+  };
+
+  if (existing) {
+    await updateDoc(doc(db, "campaigns", state.currentCampaignId, "tokens", existing.id), payload);
+    selectItem("token", existing.id);
+  } else {
+    const tokenRef = await addDoc(collection(db, "campaigns", state.currentCampaignId, "tokens"), {
+      ...payload,
+      createdAt: now
+    });
+    selectItem("token", tokenRef.id);
+  }
+
   els.markerUpload.value = "";
   setView("map");
+  setStatus("Updated your player marker");
 }
 
 async function toggleFog() {
@@ -1128,7 +1218,7 @@ async function deleteSelection() {
   } else {
     const token = selectedEntity();
     if (!token) return;
-    await deleteDoc(doc(db, "campaigns", state.currentCampaignId, "maps", state.currentMapId, "tokens", token.id));
+    await deleteDoc(doc(db, "campaigns", state.currentCampaignId, "tokens", token.id));
   }
 
   state.selected = null;
@@ -1273,7 +1363,6 @@ function cleanupCampaignSubs() {
 function cleanupMapSubs() {
   state.mapUnsubs.forEach(unsub => unsub());
   state.mapUnsubs = [];
-  state.tokens = [];
   state.drawings = [];
   state.fogActions = [];
 }

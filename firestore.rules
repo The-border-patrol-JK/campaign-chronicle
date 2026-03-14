@@ -21,6 +21,10 @@ service cloud.firestore {
         allow delete: if request.auth.uid == userId;
       }
 
+      match /tokens/{tokenId} {
+        allow read, write: if isCampaignMember(campaignId);
+      }
+
       match /maps/{mapId} {
         allow read, write: if isCampaignMember(campaignId);
 

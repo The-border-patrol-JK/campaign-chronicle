@@ -372,9 +372,14 @@ textarea {
   padding: 1rem 1rem 0.7rem;
 }
 
+#toolHint {
+  max-width: 360px;
+  line-height: 1.5;
+}
+
 .board-viewport {
   position: relative;
-  height: 72vh;
+  height: min(74dvh, 820px);
   min-height: 500px;
   overflow: hidden;
   border-top: 1px solid rgba(255, 248, 235, 0.08);
@@ -556,9 +561,13 @@ input[type="range"] {
     grid-template-columns: 1fr;
   }
 
+  .board-column {
+    order: -1;
+  }
+
   .board-viewport {
-    height: 62vh;
-    min-height: 420px;
+    height: min(72dvh, 760px);
+    min-height: 500px;
   }
 }
 
@@ -579,9 +588,14 @@ input[type="range"] {
     justify-content: flex-start;
   }
 
+  #toolHint {
+    max-width: none;
+    font-size: 0.92rem;
+  }
+
   .board-viewport {
-    height: 56vh;
-    min-height: 360px;
+    height: 74dvh;
+    min-height: 520px;
   }
 
   .summary-stats {

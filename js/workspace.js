@@ -60,7 +60,8 @@ const state = {
   mapUnsubs: [],
   campaignListUnsub: null,
   summaryTimer: null,
-  noteTimers: { shared: null, private: null }
+  noteTimers: { shared: null, private: null },
+  toolHintTimer: null
 };
 
 const els = {};
@@ -78,6 +79,7 @@ async function init() {
   renderNotes("shared");
   renderNotes("private");
   updateInspector();
+  showToolHint();
   updateAuthControls();
   setStatus("Connecting to Firebase...");
 
@@ -761,7 +763,7 @@ function onBoardDown(event) {
 
   if (state.activeTool === "fog-cover" || state.activeTool === "fog-reveal") {
     if (!getActiveMap()?.fogEnabled) {
-      alert("Turn fog on first.");
+      showToolHint("Fog is off for the active map. Tap the Fog button first.", 2600);
       return;
     }
 
@@ -869,7 +871,10 @@ function setTool(tool) {
   document.querySelectorAll("[data-tool]").forEach(button => {
     button.classList.toggle("is-active", button.dataset.tool === tool);
   });
+  showToolHint();
+}
 
+function toolHintText(tool) {
   const hints = {
     move: "Drag maps and markers around the board. Uploaded maps stay on the same scene so you can stitch them together.",
     pan: "Drag the viewport to move across larger maps.",
@@ -878,7 +883,22 @@ function setTool(tool) {
     "fog-reveal": "Reveal the map for players."
   };
 
-  els.toolHint.textContent = hints[tool];
+  return hints[tool] || hints.move;
+}
+
+function showToolHint(message = toolHintText(state.activeTool), duration = 0) {
+  window.clearTimeout(state.toolHintTimer);
+  els.toolHint.textContent = message;
+
+  if (!duration) {
+    state.toolHintTimer = null;
+    return;
+  }
+
+  state.toolHintTimer = window.setTimeout(() => {
+    els.toolHint.textContent = toolHintText(state.activeTool);
+    state.toolHintTimer = null;
+  }, duration);
 }
 
 function selectItem(kind, id) {
@@ -1190,10 +1210,12 @@ async function uploadMarker(file) {
 async function toggleFog() {
   const map = getActiveMap();
   if (!map) return;
+  const nextFogState = !map.fogEnabled;
   await updateDoc(doc(db, "campaigns", state.currentCampaignId, "maps", map.id), {
-    fogEnabled: !map.fogEnabled,
+    fogEnabled: nextFogState,
     updatedAt: Date.now()
   });
+  showToolHint(nextFogState ? "Fog is on for this map. Cover or reveal areas with the brush." : "Fog is off for this map.", 2200);
 }
 
 async function clearOverlayCollection(kind) {

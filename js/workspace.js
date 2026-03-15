@@ -618,16 +618,21 @@ function renderCursors() {
 }
 
 function renderOverlays() {
+  const activeMap = getActiveMap();
   const drawCtx = els.drawCanvas.getContext("2d");
   drawCtx.clearRect(0, 0, els.drawCanvas.width, els.drawCanvas.height);
-  [...state.drawings, ...(state.pendingStroke ? [state.pendingStroke] : [])].forEach(stroke => drawPath(drawCtx, stroke, stroke.color || "#f97316"));
+  if (activeMap) {
+    [...state.drawings, ...(state.pendingStroke ? [state.pendingStroke] : [])].forEach(stroke => {
+      drawPath(drawCtx, stroke, stroke.color || "#f97316", activeMap);
+    });
+  }
 
   const fogCtx = els.fogCanvas.getContext("2d");
   fogCtx.clearRect(0, 0, els.fogCanvas.width, els.fogCanvas.height);
-  if (!getActiveMap()?.fogEnabled) return;
+  if (!activeMap?.fogEnabled) return;
   fogCtx.fillStyle = "rgba(8, 10, 14, 0.86)";
-  fogCtx.fillRect(0, 0, els.fogCanvas.width, els.fogCanvas.height);
-  [...state.fogActions, ...(state.pendingFog ? [state.pendingFog] : [])].forEach(action => drawFogAction(fogCtx, action));
+  fogCtx.fillRect(activeMap.x, activeMap.y, activeMap.width, activeMap.height);
+  [...state.fogActions, ...(state.pendingFog ? [state.pendingFog] : [])].forEach(action => drawFogAction(fogCtx, action, activeMap));
 }
 
 function renderNotes(kind) {
@@ -813,19 +818,35 @@ function onBoardDown(event) {
   }
 
   if (state.activeTool === "draw") {
+    const drawMap = mapAtBoardPoint(point);
+    if (!drawMap) {
+      showToolHint("Tap inside a map picture to draw on it.", 2200);
+      return;
+    }
+
+    activateMap(drawMap.id);
     event.preventDefault();
     els.boardViewport.setPointerCapture?.(event.pointerId);
     state.pendingStroke = {
+      coordinateSpace: "map",
+      mapId: drawMap.id,
       color: els.drawColorInput.value,
       size: Number(els.brushSizeInput.value),
-      points: [point]
+      points: [boardPointToMapPoint(point, drawMap)]
     };
     renderOverlays();
     return;
   }
 
   if (state.activeTool === "fog-cover" || state.activeTool === "fog-reveal") {
-    if (!getActiveMap()?.fogEnabled) {
+    const fogMap = mapAtBoardPoint(point);
+    if (!fogMap) {
+      showToolHint("Tap inside a map picture to use fog.", 2200);
+      return;
+    }
+
+    activateMap(fogMap.id);
+    if (!fogMap.fogEnabled) {
       showToolHint("Fog is off for the active map. Tap the Fog button first.", 2600);
       return;
     }
@@ -833,9 +854,11 @@ function onBoardDown(event) {
     event.preventDefault();
     els.boardViewport.setPointerCapture?.(event.pointerId);
     state.pendingFog = {
+      coordinateSpace: "map",
+      mapId: fogMap.id,
       mode: state.activeTool === "fog-reveal" ? "reveal" : "cover",
       size: Number(els.brushSizeInput.value),
-      points: [point]
+      points: [boardPointToMapPoint(point, fogMap)]
     };
     renderOverlays();
     return;
@@ -873,13 +896,19 @@ function onBoardMove(event) {
   }
 
   if (state.pendingStroke) {
-    state.pendingStroke.points.push(point);
+    const map = findMapById(state.pendingStroke.mapId);
+    if (map) {
+      state.pendingStroke.points.push(boardPointToMapPoint(point, map));
+    }
     renderOverlays();
     return;
   }
 
   if (state.pendingFog) {
-    state.pendingFog.points.push(point);
+    const map = findMapById(state.pendingFog.mapId);
+    if (map) {
+      state.pendingFog.points.push(boardPointToMapPoint(point, map));
+    }
     renderOverlays();
   }
 }
@@ -965,14 +994,22 @@ function showToolHint(message = toolHintText(state.activeTool), duration = 0) {
 }
 
 function selectItem(kind, id) {
-  if (kind === "map" && state.currentMapId !== id) {
-    state.currentMapId = id;
-    watchCurrentMap();
-    renderMapList();
+  if (kind === "map") {
+    activateMap(id);
   }
   state.selected = { kind, id };
   renderBoard();
   updateInspector();
+}
+
+function activateMap(mapId) {
+  if (!mapId || state.currentMapId === mapId) {
+    return;
+  }
+
+  state.currentMapId = mapId;
+  watchCurrentMap();
+  renderMapList();
 }
 
 function selectedEntity() {
@@ -1046,6 +1083,44 @@ function boardPoint(clientX, clientY) {
   };
 }
 
+function findMapById(mapId) {
+  return state.maps.find(map => map.id === mapId) || null;
+}
+
+function mapAtBoardPoint(point) {
+  return [...state.maps].reverse().find(map => {
+    return point.x >= map.x &&
+      point.x <= map.x + map.width &&
+      point.y >= map.y &&
+      point.y <= map.y + map.height;
+  }) || null;
+}
+
+function boardPointToMapPoint(point, map) {
+  return {
+    x: clamp(Math.round(point.x - map.x), 0, Math.round(map.width)),
+    y: clamp(Math.round(point.y - map.y), 0, Math.round(map.height))
+  };
+}
+
+function overlayPointsForRender(entry, map) {
+  const points = entry.points || [];
+  if (entry.coordinateSpace !== "map") {
+    return points;
+  }
+
+  return points.map(point => ({
+    x: Math.round(map.x + point.x),
+    y: Math.round(map.y + point.y)
+  }));
+}
+
+function clipToMap(ctx, map) {
+  ctx.beginPath();
+  ctx.rect(map.x, map.y, map.width, map.height);
+  ctx.clip();
+}
+
 function boardSize() {
   let width = 2200;
   let height = 1400;
@@ -1078,9 +1153,13 @@ function resizeCanvas(canvas, size) {
   canvas.style.height = `${size.height}px`;
 }
 
-function drawPath(ctx, stroke, color) {
-  const points = stroke.points || [];
+function drawPath(ctx, stroke, color, map = null) {
+  const points = map ? overlayPointsForRender(stroke, map) : (stroke.points || []);
   if (points.length < 2) return;
+  ctx.save();
+  if (map) {
+    clipToMap(ctx, map);
+  }
   ctx.beginPath();
   ctx.lineWidth = stroke.size || 16;
   ctx.lineCap = "round";
@@ -1089,12 +1168,16 @@ function drawPath(ctx, stroke, color) {
   ctx.moveTo(points[0].x, points[0].y);
   points.slice(1).forEach(point => ctx.lineTo(point.x, point.y));
   ctx.stroke();
+  ctx.restore();
 }
 
-function drawFogAction(ctx, action) {
-  const points = action.points || [];
+function drawFogAction(ctx, action, map = null) {
+  const points = map ? overlayPointsForRender(action, map) : (action.points || []);
   if (!points.length) return;
   ctx.save();
+  if (map) {
+    clipToMap(ctx, map);
+  }
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   ctx.lineWidth = action.size || 42;
